@@ -40,10 +40,16 @@ function iniciarWebSocket(wss) {
 
     // Acumular chunks de audio del cliente
     const audioChunks = [];
+    let totalBytes = 0;
+
+    console.log(`[WS Connected] Transcripcion ID: ${transcripcionId}, Usuario: ${usuarioId}`);
 
     ws.on('message', (data) => {
       if (Buffer.isBuffer(data)) {
         audioChunks.push(data);
+        totalBytes += data.length;
+        console.log(`[WS Message] Chunk ${audioChunks.length}, Tamaño: ${data.length} bytes, Total: ${totalBytes} bytes`);
+
         // Enviar confirmación al cliente
         ws.send(JSON.stringify({ tipo: 'parcial', texto: '...' }));
       }
@@ -51,8 +57,11 @@ function iniciarWebSocket(wss) {
 
     ws.on('close', async () => {
       try {
+        console.log(`[WS Close] Transcripcion ID: ${transcripcionId}, Chunks recibidos: ${audioChunks.length}, Tamaño total: ${audioChunks.reduce((a, b) => a + b.length, 0)} bytes`);
+
         // Cuando cliente cierra, procesar todo el audio acumulado
         if (audioChunks.length === 0) {
+          console.log(`[WS] Sin audio, marcando completado vacío`);
           await actualizarTranscripcion(transcripcionId, usuarioId, {
             estado: 'completado',
             textoCompleto: '',
@@ -62,9 +71,12 @@ function iniciarWebSocket(wss) {
         }
 
         const audioBuffer = Buffer.concat(audioChunks);
-        const { transcribirAudio } = require('../services/assemblyService');
+        console.log(`[WS] Iniciando transcripción de ${audioBuffer.length} bytes`);
 
+        const { transcribirAudio } = require('../services/assemblyService');
         const resultado = await transcribirAudio(audioBuffer);
+
+        console.log(`[WS] Transcripción completada. Locutor: ${resultado.locutores.length}, Duración: ${resultado.duracionSegundos}s`);
 
         await actualizarTranscripcion(transcripcionId, usuarioId, {
           estado: 'completado',
@@ -73,7 +85,8 @@ function iniciarWebSocket(wss) {
           duracionSegundos: resultado.duracionSegundos,
         });
       } catch (err) {
-        console.error('Error procesando audio tiempo real:', err);
+        console.error(`[WS Error] ${transcripcionId}:`, err.message);
+        console.error(err.stack);
         await actualizarTranscripcion(transcripcionId, usuarioId, { estado: 'error' });
       }
     });
