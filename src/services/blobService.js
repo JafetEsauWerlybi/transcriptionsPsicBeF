@@ -1,5 +1,5 @@
 const { getContainerClient } = require('../config/azure');
-const { BlobSASPermissions, generateBlobSASQueryParameters } = require('@azure/storage-blob');
+const { StorageSharedKeyCredential, BlobSASPermissions, generateBlobSASQueryParameters } = require('@azure/storage-blob');
 const { v4: uuidv4 } = require('uuid');
 
 function generarSasUrl(blobName) {
@@ -7,9 +7,11 @@ function generarSasUrl(blobName) {
   const accountKey = process.env.AZURE_STORAGE_CONNECTION_STRING.split('AccountKey=')[1].split(';')[0];
   const containerName = process.env.AZURE_STORAGE_CONTAINER;
 
+  const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+
   const permissions = new BlobSASPermissions({ read: true });
   const expiryDate = new Date();
-  expiryDate.setHours(expiryDate.getHours() + 24); // 24 horas válido
+  expiryDate.setHours(expiryDate.getHours() + 24);
 
   const sasQueryParams = generateBlobSASQueryParameters(
     {
@@ -18,7 +20,7 @@ function generarSasUrl(blobName) {
       permissions,
       expiresOn: expiryDate,
     },
-    { accountName, accountKey }
+    sharedKeyCredential
   ).toString();
 
   return `https://${accountName}.blob.core.windows.net/${containerName}/${blobName}?${sasQueryParams}`;
@@ -35,7 +37,6 @@ async function subirAudio(buffer, mimetype) {
 }
 
 async function eliminarAudio(url) {
-  const nombre = url.split('/')[0].split('.')[url.split('/')[0].split('.').length - 1];
   const blobName = url.split('/').pop().split('?')[0];
   const blockBlobClient = getContainerClient().getBlockBlobClient(blobName);
   await blockBlobClient.deleteIfExists();
