@@ -59,4 +59,22 @@ async function obtenerEstado(req, res) {
   }
 }
 
-module.exports = { upload, obtenerEstado };
+async function descargarAudio(req, res) {
+  try {
+    const transcripcion = await obtenerTranscripcion(req.params.id, req.usuarioId);
+    if (!transcripcion) return res.status(404).json({ error: 'No encontrado' });
+    if (!transcripcion.audioUrl) return res.status(404).json({ error: 'Sin audio' });
+
+    const axios = require('axios');
+    const response = await axios.get(transcripcion.audioUrl, { responseType: 'arraybuffer' });
+
+    res.setHeader('Content-Type', 'audio/mp4');
+    res.setHeader('Content-Disposition', 'inline');
+    res.send(response.data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al descargar audio' });
+  }
+}
+
+module.exports = { upload, obtenerEstado, descargarAudio };
