@@ -5,7 +5,6 @@ const { v4: uuidv4 } = require('uuid');
 
 function iniciarWebSocket(wss) {
   wss.on('connection', async (ws, req) => {
-    // Verificar token desde query param: /ws/live?token=xxx
     const url = new URL(req.url, 'http://localhost');
     const token = url.searchParams.get('token');
 
@@ -21,7 +20,6 @@ function iniciarWebSocket(wss) {
     const transcripcionId = uuidv4();
     const segmentos = [];
 
-    // Crear registro en Cosmos DB
     await crearTranscripcion({
       id: transcripcionId,
       usuarioId,
@@ -38,30 +36,23 @@ function iniciarWebSocket(wss) {
 
     ws.send(JSON.stringify({ tipo: 'inicio', transcripcionId }));
 
-    // Acumular chunks de audio del cliente
     const audioChunks = [];
     let totalBytes = 0;
 
-    console.log(`[WS Connected] Transcripcion ID: ${transcripcionId}, Usuario: ${usuarioId}`);
 
     ws.on('message', (data) => {
       if (Buffer.isBuffer(data)) {
         audioChunks.push(data);
         totalBytes += data.length;
-        console.log(`[WS Message] Chunk ${audioChunks.length}, Tamaño: ${data.length} bytes, Total: ${totalBytes} bytes`);
 
-        // Enviar confirmación al cliente
         ws.send(JSON.stringify({ tipo: 'parcial', texto: '...' }));
       }
     });
 
     ws.on('close', async () => {
       try {
-        console.log(`[WS Close] Transcripcion ID: ${transcripcionId}, Chunks recibidos: ${audioChunks.length}, Tamaño total: ${audioChunks.reduce((a, b) => a + b.length, 0)} bytes`);
 
-        // Cuando cliente cierra, procesar todo el audio acumulado
         if (audioChunks.length === 0) {
-          console.log(`[WS] Sin audio, marcando completado vacío`);
           await actualizarTranscripcion(transcripcionId, usuarioId, {
             estado: 'completado',
             textoCompleto: '',
@@ -71,22 +62,24 @@ function iniciarWebSocket(wss) {
         }
 
         const audioBuffer = Buffer.concat(audioChunks);
-        console.log(`[WS] Iniciando transcripción de ${audioBuffer.length} bytes`);
 
         const { transcribirAudio } = require('../services/assemblyService');
-        const resultado = await transcribirAudio(audioBuffer);
+        const { subirAudio } = require('../services/blobService');
 
-        console.log(`[WS] Transcripción completada. Locutor: ${resultado.locutores.length}, Duración: ${resultado.duracionSegundos}s`);
+        const [resultado, audioUrl] = await Promise.all([
+          transcribirAudio(audioBuffer),
+          subirAudio(audioBuffer, 'audio/webm'),
+        ]);
+
 
         await actualizarTranscripcion(transcripcionId, usuarioId, {
           estado: 'completado',
+          audioUrl,
           textoCompleto: resultado.textoCompleto,
           locutores: resultado.locutores,
           duracionSegundos: resultado.duracionSegundos,
         });
       } catch (err) {
-        console.error(`[WS Error] ${transcripcionId}:`, err.message);
-        console.error(err.stack);
         await actualizarTranscripcion(transcripcionId, usuarioId, { estado: 'error' });
       }
     });
