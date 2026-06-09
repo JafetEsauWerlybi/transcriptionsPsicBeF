@@ -39,9 +39,7 @@ function iniciarWebSocket(wss) {
     ws.send(JSON.stringify({ tipo: 'inicio', transcripcionId }));
 
     // Conectar al WebSocket de AssemblyAI
-    const aaiWs = new WebSocket('wss://api.assemblyai.com/v2/realtime/ws?sample_rate=16000', {
-      headers: { Authorization: process.env.ASSEMBLYAI_API_KEY },
-    });
+    const aaiWs = new WebSocket(`wss://api.assemblyai.com/v2/realtime/ws?sample_rate=16000&token=${process.env.ASSEMBLYAI_API_KEY}`);
 
     aaiWs.on('open', () => {
       ws.send(JSON.stringify({ tipo: 'conectado' }));
