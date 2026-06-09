@@ -38,58 +38,44 @@ function iniciarWebSocket(wss) {
 
     ws.send(JSON.stringify({ tipo: 'inicio', transcripcionId }));
 
-    // Conectar al WebSocket de AssemblyAI
-    const aaiWs = new WebSocket(`wss://api.assemblyai.com/v2/realtime/ws?sample_rate=16000&token=${process.env.ASSEMBLYAI_API_KEY}`);
+    // Acumular chunks de audio del cliente
+    const audioChunks = [];
 
-    aaiWs.on('open', () => {
-      ws.send(JSON.stringify({ tipo: 'conectado' }));
-    });
-
-    aaiWs.on('message', (data) => {
-      const msg = JSON.parse(data);
-      if (msg.message_type === 'FinalTranscript' && msg.text) {
-        const segmento = {
-          texto: msg.text,
-          locutor: msg.words?.[0]?.speaker || 'A',
-          inicio: msg.audio_start / 1000,
-          fin: msg.audio_end / 1000,
-        };
-        segmentos.push(segmento);
-        ws.send(JSON.stringify({ tipo: 'segmento', ...segmento }));
-      } else if (msg.message_type === 'PartialTranscript') {
-        ws.send(JSON.stringify({ tipo: 'parcial', texto: msg.text }));
-      }
-    });
-
-    // Recibir audio del cliente y reenviar a AssemblyAI
     ws.on('message', (data) => {
-      if (aaiWs.readyState === WebSocket.OPEN) {
-        if (Buffer.isBuffer(data)) {
-          aaiWs.send(JSON.stringify({ audio_data: data.toString('base64') }));
-        }
+      if (Buffer.isBuffer(data)) {
+        audioChunks.push(data);
+        // Enviar confirmación al cliente
+        ws.send(JSON.stringify({ tipo: 'parcial', texto: '...' }));
       }
     });
 
     ws.on('close', async () => {
-      aaiWs.close();
+      try {
+        // Cuando cliente cierra, procesar todo el audio acumulado
+        if (audioChunks.length === 0) {
+          await actualizarTranscripcion(transcripcionId, usuarioId, {
+            estado: 'completado',
+            textoCompleto: '',
+            locutores: [],
+          });
+          return;
+        }
 
-      // Guardar transcripción completa
-      const locutoresMap = {};
-      for (const seg of segmentos) {
-        if (!locutoresMap[seg.locutor]) locutoresMap[seg.locutor] = { id: seg.locutor, segmentos: [] };
-        locutoresMap[seg.locutor].segmentos.push({ inicio: seg.inicio, fin: seg.fin, texto: seg.texto });
+        const audioBuffer = Buffer.concat(audioChunks);
+        const { transcribirAudio } = require('../services/assemblyService');
+
+        const resultado = await transcribirAudio(audioBuffer);
+
+        await actualizarTranscripcion(transcripcionId, usuarioId, {
+          estado: 'completado',
+          textoCompleto: resultado.textoCompleto,
+          locutores: resultado.locutores,
+          duracionSegundos: resultado.duracionSegundos,
+        });
+      } catch (err) {
+        console.error('Error procesando audio tiempo real:', err);
+        await actualizarTranscripcion(transcripcionId, usuarioId, { estado: 'error' });
       }
-
-      await actualizarTranscripcion(transcripcionId, usuarioId, {
-        estado: 'completado',
-        textoCompleto: segmentos.map(s => s.texto).join(' '),
-        locutores: Object.values(locutoresMap),
-      });
-    });
-
-    aaiWs.on('error', (err) => {
-      console.error('AssemblyAI WS error:', err);
-      ws.send(JSON.stringify({ tipo: 'error', mensaje: 'Error en transcripción en tiempo real' }));
     });
   });
 }
