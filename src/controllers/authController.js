@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
-const { cosmosContainer } = require('../config/azure');
+const { getCosmosContainer } = require('../config/azure');
 
 async function register(req, res) {
   const { nombre, email, password } = req.body;
@@ -9,12 +9,11 @@ async function register(req, res) {
     return res.status(400).json({ error: 'Todos los campos son requeridos' });
 
   try {
-    // Verificar si ya existe
     const query = {
       query: 'SELECT * FROM c WHERE c.email = @email AND c.tipo = "usuario"',
       parameters: [{ name: '@email', value: email }],
     };
-    const { resources } = await cosmosContainer.items.query(query).fetchAll();
+    const { resources } = await getCosmosContainer().items.query(query).fetchAll();
     if (resources.length > 0)
       return res.status(409).json({ error: 'El email ya está registrado' });
 
@@ -28,8 +27,7 @@ async function register(req, res) {
       creadoEn: new Date().toISOString(),
     };
 
-    await cosmosContainer.items.create(usuario);
-
+    await getCosmosContainer().items.create(usuario);
     const token = jwt.sign({ id: usuario.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, nombre: usuario.nombre });
   } catch (err) {
@@ -48,7 +46,7 @@ async function login(req, res) {
       query: 'SELECT * FROM c WHERE c.email = @email AND c.tipo = "usuario"',
       parameters: [{ name: '@email', value: email }],
     };
-    const { resources } = await cosmosContainer.items.query(query).fetchAll();
+    const { resources } = await getCosmosContainer().items.query(query).fetchAll();
     const usuario = resources[0];
 
     if (!usuario) return res.status(401).json({ error: 'Credenciales inválidas' });
