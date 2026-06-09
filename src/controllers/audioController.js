@@ -7,17 +7,15 @@ async function upload(req, res) {
   if (!req.file) return res.status(400).json({ error: 'Archivo de audio requerido' });
 
   try {
-    // 1. Subir a Azure Blob
-    const audioUrl = await subirAudio(req.file.buffer, req.file.mimetype);
-
-    // 2. Crear registro en Cosmos DB con estado "procesando"
     const id = uuidv4();
+
+    // 1. Crear registro en Cosmos DB con estado "procesando"
     await crearTranscripcion({
       id,
       usuarioId: req.usuarioId,
       tipo: 'archivo',
       estado: 'procesando',
-      audioUrl,
+      audioUrl: null,
       duracionSegundos: null,
       locutores: [],
       textoCompleto: null,
@@ -28,18 +26,21 @@ async function upload(req, res) {
 
     res.json({ id, estado: 'procesando' });
 
-    // 3. Transcribir en segundo plano (no bloqueamos la respuesta)
-    transcribirAudio(audioUrl)
-      .then(resultado => actualizarTranscripcion(id, req.usuarioId, {
-        estado: 'completado',
-        textoCompleto: resultado.textoCompleto,
-        locutores: resultado.locutores,
-        duracionSegundos: resultado.duracionSegundos,
-      }))
-      .catch(err => {
-        console.error('Error transcripción:', err);
-        actualizarTranscripcion(id, req.usuarioId, { estado: 'error' });
-      });
+    // 2. En paralelo: subir a Azure Blob y transcribir directamente
+    Promise.all([
+      subirAudio(req.file.buffer, req.file.mimetype)
+        .then(audioUrl => actualizarTranscripcion(id, req.usuarioId, { audioUrl })),
+      transcribirAudio(req.file.buffer)
+        .then(resultado => actualizarTranscripcion(id, req.usuarioId, {
+          estado: 'completado',
+          textoCompleto: resultado.textoCompleto,
+          locutores: resultado.locutores,
+          duracionSegundos: resultado.duracionSegundos,
+        }))
+    ]).catch(err => {
+      console.error('Error transcripción:', err);
+      actualizarTranscripcion(id, req.usuarioId, { estado: 'error' });
+    });
 
   } catch (err) {
     console.error(err);

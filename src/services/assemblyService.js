@@ -1,8 +1,8 @@
 const client = require('../config/assemblyai');
 
-async function transcribirAudio(audioUrl) {
+async function transcribirAudio(audioBuffer) {
   const transcript = await client.transcripts.transcribe({
-    audio_url: audioUrl,
+    audio: audioBuffer,
     speaker_labels: true,
     language_code: 'es',
   });
