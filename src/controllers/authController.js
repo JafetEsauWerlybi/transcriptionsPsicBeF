@@ -144,17 +144,39 @@ async function fixUsuarios(req, res) {
 
     const { resources } = await getCosmosContainer().items.query(query).fetchAll();
     let actualizados = 0;
+    let errores = [];
 
     for (const usuario of resources) {
       if (!usuario.usuarioId) {
-        usuario.usuarioId = usuario.id;
-        await getCosmosContainer().item(usuario.id, usuario.id).replace(usuario);
-        actualizados++;
-        console.log(`Actualizado: ${usuario.id}`);
+        try {
+          usuario.usuarioId = usuario.id;
+          // Usar la partition key correcta
+          await getCosmosContainer().item(usuario.id, usuario.id).replace(usuario);
+          actualizados++;
+          console.log(`Actualizado: ${usuario.id}`);
+        } catch (itemErr) {
+          console.log(`Intento fallido con id como partition key, intentando con delete+create para ${usuario.id}`);
+          try {
+            // Si falla replace, intenta borrar y recrear
+            await getCosmosContainer().item(usuario.id, usuario.id).delete();
+          } catch (delErr) {
+            console.log(`No se pudo borrar ${usuario.id}`);
+          }
+          // Crear de nuevo con usuarioId
+          usuario.usuarioId = usuario.id;
+          await getCosmosContainer().items.create(usuario);
+          actualizados++;
+          console.log(`Recreado: ${usuario.id}`);
+        }
       }
     }
 
-    res.json({ mensaje: `✅ ${actualizados} usuarios actualizados con usuarioId` });
+    res.json({
+      mensaje: `✅ ${actualizados} usuarios actualizados con usuarioId`,
+      total: resources.length,
+      actualizados,
+      sinActualizar: resources.length - actualizados
+    });
   } catch (err) {
     console.error('Error fixUsuarios:', err);
     res.status(500).json({ error: err.message });
