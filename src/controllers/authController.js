@@ -64,20 +64,30 @@ async function login(req, res) {
 
 async function obtenerPerfil(req, res) {
   try {
+    console.log('obtenerPerfil - usuarioId:', req.usuarioId);
+
     if (!req.usuarioId) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
 
-    const { item } = await getCosmosContainer().item(req.usuarioId, req.usuarioId).read();
+    const query = {
+      query: 'SELECT * FROM c WHERE c.id = @id AND c.tipo = "usuario"',
+      parameters: [{ name: '@id', value: req.usuarioId }],
+    };
 
-    if (!item || item.tipo !== 'usuario') {
+    const { resources } = await getCosmosContainer().items.query(query).fetchAll();
+    const usuario = resources[0];
+
+    console.log('Usuario encontrado:', usuario?.id);
+
+    if (!usuario) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    const { password, ...perfil } = item;
+    const { password, ...perfil } = usuario;
     res.json(perfil);
   } catch (err) {
-    console.error('Error obtenerPerfil:', err);
+    console.error('Error obtenerPerfil:', err.message);
     res.status(500).json({ error: err.message || 'Error al obtener perfil' });
   }
 }
@@ -88,14 +98,20 @@ async function actualizarPerfil(req, res) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
 
-    const { item: existente } = await getCosmosContainer().item(req.usuarioId, req.usuarioId).read();
+    const query = {
+      query: 'SELECT * FROM c WHERE c.id = @id AND c.tipo = "usuario"',
+      parameters: [{ name: '@id', value: req.usuarioId }],
+    };
+    const { resources } = await getCosmosContainer().items.query(query).fetchAll();
+    const existente = resources[0];
 
-    if (!existente || existente.tipo !== 'usuario') {
+    if (!existente) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
     const actualizado = {
       ...existente,
+      nombre: req.body.nombre || existente.nombre || '',
       telefono: req.body.telefono || existente.telefono || '',
       empresa: req.body.empresa || existente.empresa || '',
       profesion: req.body.profesion || existente.profesion || '',
