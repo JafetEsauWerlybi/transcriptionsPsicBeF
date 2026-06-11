@@ -136,6 +136,35 @@ async function actualizarPerfil(req, res) {
   }
 }
 
+async function limpiarUsuariosAntiguos(req, res) {
+  try {
+    const query = {
+      query: 'SELECT * FROM c WHERE c.tipo = "usuario" AND NOT IS_DEFINED(c.usuarioId)'
+    };
+
+    const { resources } = await getCosmosContainer().items.query(query).fetchAll();
+    let eliminados = 0;
+
+    for (const usuario of resources) {
+      try {
+        await getCosmosContainer().item(usuario.id, usuario.id).delete();
+        eliminados++;
+        console.log(`Eliminado documento antiguo: ${usuario.id}`);
+      } catch (delErr) {
+      }
+    }
+
+    res.json({
+      mensaje: `✅ ${eliminados} documentos antiguos eliminados`,
+      total: resources.length,
+      eliminados
+    });
+  } catch (err) {
+    console.error('Error limpiarUsuariosAntiguos:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
 async function fixUsuarios(req, res) {
   try {
     const query = {
@@ -150,7 +179,6 @@ async function fixUsuarios(req, res) {
       if (!usuario.usuarioId) {
         try {
           usuario.usuarioId = usuario.id;
-          // Usar la partition key correcta
           await getCosmosContainer().item(usuario.id, usuario.id).replace(usuario);
           actualizados++;
           console.log(`Actualizado: ${usuario.id}`);
@@ -183,4 +211,4 @@ async function fixUsuarios(req, res) {
   }
 }
 
-module.exports = { register, login, obtenerPerfil, actualizarPerfil, fixUsuarios };
+module.exports = { register, login, obtenerPerfil, actualizarPerfil, fixUsuarios, limpiarUsuariosAntiguos };

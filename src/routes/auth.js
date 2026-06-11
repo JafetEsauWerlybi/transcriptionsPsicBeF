@@ -1,11 +1,12 @@
 const router = require('express').Router();
 const authMiddleware = require('../middleware/auth');
-const { register, login, obtenerPerfil, actualizarPerfil, fixUsuarios } = require('../controllers/authController');
+const { register, login, obtenerPerfil, actualizarPerfil, fixUsuarios, limpiarUsuariosAntiguos } = require('../controllers/authController');
 
 router.post('/register', register);
 router.post('/login', login);
 router.get('/perfil', authMiddleware, obtenerPerfil);
 router.put('/perfil', authMiddleware, actualizarPerfil);
 router.post('/fix-usuarios', fixUsuarios); // Endpoint temporal para arreglar usuarios
+router.post('/limpiar-usuarios-antiguos', limpiarUsuariosAntiguos); // Endpoint temporal para limpiar duplicados
 
 module.exports = router;
