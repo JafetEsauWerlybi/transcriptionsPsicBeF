@@ -5,18 +5,45 @@ async function generarResumen(transcripcion) {
     .map(l => `Locutor ${l.id}:\n${l.segmentos.map(s => s.texto).join(' ')}`)
     .join('\n\n');
 
-  const prompt = `Eres un asistente especializado en analizar transcripciones de audio con múltiples locutores.
+  const prompt = `Analiza esta transcripción desde perspectiva clínica y psicológica:
 
-Aquí está la transcripción:
+**1. INDICADORES PSICOPATOLÓGICOS:**
+- Identificar síntomas de trastornos mentales según criterios diagnósticos contemporáneos (depresión, ansiedad, TEPT, trastornos de personalidad, etc.)
+- Mecanismos de defensa psicológica (represión, proyección, racionalización, disociación, etc.)
+- Patrones cognitivos distorsionados (catastrofismo, generalización excesiva, pensamiento dicotómico, rumiación)
+- Síntomas específicos mencionados con frecuencia e intensidad
+
+**2. ANÁLISIS DE PATRONES DE LENGUAJE:**
+- Palabras/frases que se repiten (indicar cuántas veces)
+- Temas que evita, minimiza o esquiva
+- Fluctuaciones de tono emocional durante la conversación
+- Inconsistencias o contradicciones en el relato
+- Patrones de culpa, vergüenza, baja autoestima, autosabotaje
+- Quejas somáticas que sugieren somatización
+
+**3. DINÁMICA RELACIONAL:**
+- Patrones en relaciones interpersonales
+- Estilos de apego (ansioso, evitativo, desorganizado)
+- Grado de introspección y autoconciencia
+- Nivel de resistencia o aceptación de problemas
+
+**4. FACTORES DE RIESGO INMEDIATOS:**
+- Ideación o intención autolesiva/suicida
+- Consumo de sustancias
+- Aislamiento extremo
+- Trauma reciente o estrés severo
+
+**5. EVALUACIÓN CLÍNICA:**
+- Congruencia emocional y afectiva
+- Severidad del sufrimiento psicológico
+- Recursos y estrategias de afrontamiento
+- Nivel de urgencia de intervención
+
+Transcripción:
 
 ${locutoresTexto}
 
-Por favor genera:
-1. Un resumen general de la conversación (3-5 oraciones)
-2. Los puntos clave mencionados
-3. Tareas o compromisos mencionados por cada locutor (si los hay)
-
-Responde en español y de forma clara y estructurada.`;
+Proporciona análisis específico citando ejemplos del texto.`;
 
   const response = await axios.post(
     'https://api.anthropic.com/v1/messages',

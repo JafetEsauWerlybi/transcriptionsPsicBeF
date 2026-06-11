@@ -11,7 +11,6 @@ async function transcribirAudio(audioBuffer) {
     throw new Error(`AssemblyAI error: ${transcript.error}`);
   }
 
-  // Agrupar por locutor
   const locutoresMap = {};
   for (const utterance of transcript.utterances || []) {
     const id = utterance.speaker;
