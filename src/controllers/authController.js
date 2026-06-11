@@ -18,8 +18,10 @@ async function register(req, res) {
       return res.status(409).json({ error: 'El email ya está registrado' });
 
     const hash = await bcrypt.hash(password, 10);
+    const usuarioId = uuidv4();
     const usuario = {
-      id: uuidv4(),
+      id: usuarioId,
+      usuarioId: usuarioId,
       tipo: 'usuario',
       nombre,
       email,
@@ -111,6 +113,7 @@ async function actualizarPerfil(req, res) {
 
     const actualizado = {
       ...existente,
+      usuarioId: existente.usuarioId || existente.id,
       nombre: req.body.nombre || existente.nombre || '',
       telefono: req.body.telefono || existente.telefono || '',
       empresa: req.body.empresa || existente.empresa || '',
@@ -123,7 +126,8 @@ async function actualizarPerfil(req, res) {
       actualizadoEn: new Date().toISOString(),
     };
 
-    const { resource } = await getCosmosContainer().item(req.usuarioId, req.usuarioId).replace(actualizado);
+    // Usar la partition key correcta: usuarioId
+    const { resource } = await getCosmosContainer().item(existente.id, existente.usuarioId || existente.id).replace(actualizado);
     const { password, ...perfil } = resource;
     res.json(perfil);
   } catch (err) {
@@ -132,4 +136,29 @@ async function actualizarPerfil(req, res) {
   }
 }
 
-module.exports = { register, login, obtenerPerfil, actualizarPerfil };
+async function fixUsuarios(req, res) {
+  try {
+    const query = {
+      query: 'SELECT * FROM c WHERE c.tipo = "usuario"'
+    };
+
+    const { resources } = await getCosmosContainer().items.query(query).fetchAll();
+    let actualizados = 0;
+
+    for (const usuario of resources) {
+      if (!usuario.usuarioId) {
+        usuario.usuarioId = usuario.id;
+        await getCosmosContainer().item(usuario.id, usuario.id).replace(usuario);
+        actualizados++;
+        console.log(`Actualizado: ${usuario.id}`);
+      }
+    }
+
+    res.json({ mensaje: `✅ ${actualizados} usuarios actualizados con usuarioId` });
+  } catch (err) {
+    console.error('Error fixUsuarios:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+module.exports = { register, login, obtenerPerfil, actualizarPerfil, fixUsuarios };
