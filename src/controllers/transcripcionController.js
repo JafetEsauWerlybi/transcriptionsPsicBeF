@@ -56,4 +56,18 @@ async function resumir(req, res) {
   }
 }
 
-module.exports = { listar, detalle, eliminar, resumir };
+async function actualizarNombresLocutores(req, res) {
+  try {
+    const t = await obtenerTranscripcion(req.params.id, req.usuarioId);
+    if (!t) return res.status(404).json({ error: 'No encontrada' });
+
+    const { nombresLocutores } = req.body;
+    await actualizarTranscripcion(req.params.id, req.usuarioId, { nombresLocutores });
+    res.json({ mensaje: 'Nombres actualizados' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al actualizar nombres' });
+  }
+}
+
+module.exports = { listar, detalle, eliminar, resumir, actualizarNombresLocutores };
