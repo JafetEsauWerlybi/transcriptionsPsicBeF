@@ -1,9 +1,11 @@
-const axios = require('axios');
+const axios = require("axios");
 
 async function generarResumen(transcripcion) {
   const locutoresTexto = transcripcion.locutores
-    .map(l => `Locutor ${l.id}:\n${l.segmentos.map(s => s.texto).join(' ')}`)
-    .join('\n\n');
+    .map(
+      (l) => `Locutor ${l.id}:\n${l.segmentos.map((s) => s.texto).join(" ")}`,
+    )
+    .join("\n\n");
 
   const prompt = `Analiza esta transcripción desde perspectiva clínica y psicológica:
 
@@ -47,35 +49,38 @@ Proporciona análisis específico citando ejemplos del texto.`;
 
   try {
     const response = await axios.post(
-      'https://api.anthropic.com/v1/messages',
+      "https://api.anthropic.com/v1/messages",
       {
-        model: 'claude-sonnet-5-20241022',
+        model: "claude-sonnet-4-6",
         max_tokens: 2048,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: "user", content: prompt }],
       },
       {
         headers: {
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2024-06-01',
-          'content-type': 'application/json',
+          "x-api-key": process.env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
         },
-      }
+      },
     );
 
     return response.data.content[0].text;
   } catch (error) {
-    console.error('=== ANTHROPIC API ERROR ===');
-    console.error('Status:', error.response?.status);
-    console.error('Message:', error.message);
+    console.error("=== ANTHROPIC API ERROR ===");
+    console.error("Status:", error.response?.status);
+    console.error("Message:", error.message);
 
     // Log everything we can about the error
     if (error.response?.data) {
-      console.error('Response Type:', error.response.data.type);
+      console.error("Response Type:", error.response.data.type);
       if (error.response.data.error) {
-        console.error('Error Object:', JSON.stringify(error.response.data.error, null, 2));
+        console.error(
+          "Error Object:",
+          JSON.stringify(error.response.data.error, null, 2),
+        );
       }
     }
-    console.error('========================');
+    console.error("========================");
     throw error;
   }
 }
