@@ -48,7 +48,7 @@ Proporciona análisis específico citando ejemplos del texto.`;
   const response = await axios.post(
     'https://api.anthropic.com/v1/messages',
     {
-      model: 'claude-sonnet-4-6',
+      model: 'claude-opus-5',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     },
