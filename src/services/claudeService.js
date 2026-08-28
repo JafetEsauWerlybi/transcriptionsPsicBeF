@@ -56,7 +56,7 @@ Proporciona análisis específico citando ejemplos del texto.`;
       {
         headers: {
           'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
+          'anthropic-version': '2024-06-01',
           'content-type': 'application/json',
         },
       }
