@@ -66,13 +66,15 @@ Proporciona análisis específico citando ejemplos del texto.`;
   } catch (error) {
     console.error('=== ANTHROPIC API ERROR ===');
     console.error('Status:', error.response?.status);
-    if (error.response?.data?.error) {
-      console.error('Error Type:', error.response.data.error.type);
-      console.error('Error Message:', error.response.data.error.message);
-    } else {
-      console.error('Full Response Data:', JSON.stringify(error.response?.data, null, 2));
+    console.error('Message:', error.message);
+
+    // Log everything we can about the error
+    if (error.response?.data) {
+      console.error('Response Type:', error.response.data.type);
+      if (error.response.data.error) {
+        console.error('Error Object:', JSON.stringify(error.response.data.error, null, 2));
+      }
     }
-    console.error('Request URL:', error.response?.config?.url);
     console.error('========================');
     throw error;
   }
