@@ -126,8 +126,7 @@ async function actualizarPerfil(req, res) {
       actualizadoEn: new Date().toISOString(),
     };
 
-    // Usar la partition key correcta: usuarioId
-    const { resource } = await getCosmosContainer().item(existente.id, existente.usuarioId || existente.id).replace(actualizado);
+    const { resource } = await getCosmosContainer().item(existente.id, existente.id).replace(actualizado);
     const { password, ...perfil } = resource;
     res.json(perfil);
   } catch (err) {

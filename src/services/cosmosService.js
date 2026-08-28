@@ -6,7 +6,7 @@ async function crearTranscripcion(data) {
 }
 
 async function obtenerTranscripcion(id, usuarioId) {
-  const { resource } = await getCosmosContainer().item(id, usuarioId).read();
+  const { resource } = await getCosmosContainer().item(id, id).read();
   return resource;
 }
 
@@ -20,14 +20,14 @@ async function listarTranscripciones(usuarioId) {
 }
 
 async function actualizarTranscripcion(id, usuarioId, campos) {
-  const { resource: existente } = await getCosmosContainer().item(id, usuarioId).read();
+  const { resource: existente } = await getCosmosContainer().item(id, id).read();
   const actualizado = { ...existente, ...campos };
-  const { resource } = await getCosmosContainer().item(id, usuarioId).replace(actualizado);
+  const { resource } = await getCosmosContainer().item(id, id).replace(actualizado);
   return resource;
 }
 
 async function eliminarTranscripcion(id, usuarioId) {
-  await getCosmosContainer().item(id, usuarioId).delete();
+  await getCosmosContainer().item(id, id).delete();
 }
 
 module.exports = {
