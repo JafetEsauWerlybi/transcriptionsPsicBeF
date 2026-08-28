@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 function generarSasUrl(blobName) {
   const accountName = process.env.AZURE_STORAGE_CONNECTION_STRING.split('AccountName=')[1].split(';')[0];
   const accountKey = process.env.AZURE_STORAGE_CONNECTION_STRING.split('AccountKey=')[1].split(';')[0];
-  const containerName = process.env.AZURE_BLOB_CONTAINER_NAME;
+  const containerName = process.env.AZURE_STORAGE_CONTAINER;
 
   const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
 
