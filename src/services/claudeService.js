@@ -45,23 +45,32 @@ ${locutoresTexto}
 
 Proporciona análisis específico citando ejemplos del texto.`;
 
-  const response = await axios.post(
-    'https://api.anthropic.com/v1/messages',
-    {
-      model: 'claude-sonnet-5',
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }],
-    },
-    {
-      headers: {
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
+  try {
+    const response = await axios.post(
+      'https://api.anthropic.com/v1/messages',
+      {
+        model: 'claude-opus-5-20250805',
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: prompt }],
       },
-    }
-  );
+      {
+        headers: {
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+      }
+    );
 
-  return response.data.content[0].text;
+    return response.data.content[0].text;
+  } catch (error) {
+    console.error('Error calling Anthropic API:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+    });
+    throw error;
+  }
 }
 
 module.exports = { generarResumen };
