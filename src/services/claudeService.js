@@ -64,11 +64,10 @@ Proporciona análisis específico citando ejemplos del texto.`;
 
     return response.data.content[0].text;
   } catch (error) {
-    console.error('Error calling Anthropic API:', {
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message,
-    });
+    console.error('Error calling Anthropic API:');
+    console.error('Status:', error.response?.status);
+    console.error('Data:', JSON.stringify(error.response?.data, null, 2));
+    console.error('Message:', error.message);
     throw error;
   }
 }
