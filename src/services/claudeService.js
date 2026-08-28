@@ -64,10 +64,16 @@ Proporciona análisis específico citando ejemplos del texto.`;
 
     return response.data.content[0].text;
   } catch (error) {
-    console.error('Error calling Anthropic API:');
+    console.error('=== ANTHROPIC API ERROR ===');
     console.error('Status:', error.response?.status);
-    console.error('Data:', JSON.stringify(error.response?.data, null, 2));
-    console.error('Message:', error.message);
+    if (error.response?.data?.error) {
+      console.error('Error Type:', error.response.data.error.type);
+      console.error('Error Message:', error.response.data.error.message);
+    } else {
+      console.error('Full Response Data:', JSON.stringify(error.response?.data, null, 2));
+    }
+    console.error('Request URL:', error.response?.config?.url);
+    console.error('========================');
     throw error;
   }
 }
