@@ -4,6 +4,10 @@
       "Read(//c/Users/Jeckito Pay/Documents/AppPsicoaudios/**)",
       "Read(//c/Users/Jeckito Pay/Downloads/**)",
       "Read(//c/Users/Jeckito Pay/Documents/AppPsicoaudios/apptrPsicoaudios-backend/**)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Jeckito Pay\\Documents\\AppPsicoaudios\\AppPsicoaudios-frontend\\src\\services",
+      "c:\\Users\\Jeckito Pay\\Documents\\AppPsicoaudios\\AppPsicoaudios-frontend\\src\\pages"
     ]
   }
 }

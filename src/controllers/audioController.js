@@ -31,9 +31,10 @@ async function upload(req, res) {
 
     // 2. En background: subir a Azure Blob y transcribir
     setImmediate(async () => {
+      let fileBuffer = null;
       try {
         console.log(`[UPLOAD] Leyendo archivo del disco: ${req.file.path}`);
-        const fileBuffer = await fs.readFile(req.file.path);
+        fileBuffer = await fs.readFile(req.file.path);
         console.log(`[UPLOAD] Archivo leído: ${fileBuffer.length} bytes`);
 
         // Subir a Azure Blob
@@ -60,6 +61,7 @@ async function upload(req, res) {
           await actualizarTranscripcion(id, req.usuarioId, { estado: 'error' });
         } catch (e) {}
       } finally {
+        fileBuffer = null;
         try {
           await fs.unlink(req.file.path);
           console.log(`[UPLOAD] Archivo temporal eliminado`);
