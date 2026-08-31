@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const fs = require('fs').promises;
 const { subirAudio } = require('../services/blobService');
 const { transcribirAudio } = require('../services/assemblyService');
 const { crearTranscripcion, actualizarTranscripcion, obtenerTranscripcion } = require('../services/cosmosService');
@@ -26,20 +27,30 @@ async function upload(req, res) {
 
     res.json({ id, estado: 'procesando' });
 
-    // 2. En paralelo: subir a Azure Blob y transcribir directamente
-    Promise.all([
-      subirAudio(req.file.buffer, req.file.mimetype)
-        .then(audioUrl => actualizarTranscripcion(id, req.usuarioId, { audioUrl })),
-      transcribirAudio(req.file.buffer)
-        .then(resultado => actualizarTranscripcion(id, req.usuarioId, {
-          estado: 'completado',
-          textoCompleto: resultado.textoCompleto,
-          locutores: resultado.locutores,
-          duracionSegundos: resultado.duracionSegundos,
-        }))
-    ]).catch(err => {
-      console.error('Error transcripción:', err);
-      actualizarTranscripcion(id, req.usuarioId, { estado: 'error' });
+    // 2. En paralelo: subir a Azure Blob y transcribir
+    setImmediate(async () => {
+      try {
+        const fileBuffer = await fs.readFile(req.file.path);
+
+        await Promise.all([
+          subirAudio(fileBuffer, req.file.mimetype)
+            .then(audioUrl => actualizarTranscripcion(id, req.usuarioId, { audioUrl })),
+          transcribirAudio(fileBuffer)
+            .then(resultado => actualizarTranscripcion(id, req.usuarioId, {
+              estado: 'completado',
+              textoCompleto: resultado.textoCompleto,
+              locutores: resultado.locutores,
+              duracionSegundos: resultado.duracionSegundos,
+            }))
+        ]);
+      } catch (err) {
+        console.error('Error transcripción:', err);
+        await actualizarTranscripcion(id, req.usuarioId, { estado: 'error' });
+      } finally {
+        try {
+          await fs.unlink(req.file.path);
+        } catch (e) {}
+      }
     });
 
   } catch (err) {
