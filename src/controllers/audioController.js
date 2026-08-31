@@ -27,25 +27,28 @@ async function upload(req, res) {
 
     res.json({ id, estado: 'procesando' });
 
-    // 2. En paralelo: subir a Azure Blob y transcribir
+    // 2. En background: subir a Azure Blob y transcribir
     setImmediate(async () => {
       try {
         const fileBuffer = await fs.readFile(req.file.path);
 
-        await Promise.all([
-          subirAudio(fileBuffer, req.file.mimetype)
-            .then(audioUrl => actualizarTranscripcion(id, req.usuarioId, { audioUrl })),
-          transcribirAudio(fileBuffer)
-            .then(resultado => actualizarTranscripcion(id, req.usuarioId, {
-              estado: 'completado',
-              textoCompleto: resultado.textoCompleto,
-              locutores: resultado.locutores,
-              duracionSegundos: resultado.duracionSegundos,
-            }))
-        ]);
+        // Subir a Azure Blob
+        const audioUrl = await subirAudio(fileBuffer, req.file.mimetype);
+        await actualizarTranscripcion(id, req.usuarioId, { audioUrl });
+
+        // Transcribir (secuencial, no paralelo, para evitar sobrecarga)
+        const resultado = await transcribirAudio(fileBuffer);
+        await actualizarTranscripcion(id, req.usuarioId, {
+          estado: 'completado',
+          textoCompleto: resultado.textoCompleto,
+          locutores: resultado.locutores,
+          duracionSegundos: resultado.duracionSegundos,
+        });
       } catch (err) {
         console.error('Error transcripción:', err);
-        await actualizarTranscripcion(id, req.usuarioId, { estado: 'error' });
+        try {
+          await actualizarTranscripcion(id, req.usuarioId, { estado: 'error' });
+        } catch (e) {}
       } finally {
         try {
           await fs.unlink(req.file.path);
