@@ -3,11 +3,17 @@
     "allow": [
       "Read(//c/Users/Jeckito Pay/Documents/AppPsicoaudios/**)",
       "Read(//c/Users/Jeckito Pay/Downloads/**)",
-      "Read(//c/Users/Jeckito Pay/Documents/AppPsicoaudios/apptrPsicoaudios-backend/**)"
+      "Read(//c/Users/Jeckito Pay/Documents/AppPsicoaudios/apptrPsicoaudios-backend/**)",
+      "Read(//c/Users/Jeckito Pay/Documents/AppPsicoaudios/AppPsicoaudios-frontend/src/**)",
+      "Read(//c/Users/Jeckito Pay/Documents/AppPsicoaudios/AppPsicoaudios-frontend/src/pages/**)",
+      "Read(//c/Users/Jeckito Pay/Documents/AppPsicoaudios/AppPsicoaudios-frontend/src/services/**)",
+      "Read(//c/Users/Jeckito Pay/Documents/AppPsicoaudios/apptrPsicoaudios-backend/node_modules/**)",
+      "Read(//c/Users/Jeckito Pay/Documents/AppPsicoaudios/AppPsicoaudios-frontend/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Jeckito Pay\\Documents\\AppPsicoaudios\\AppPsicoaudios-frontend\\src\\services",
-      "c:\\Users\\Jeckito Pay\\Documents\\AppPsicoaudios\\AppPsicoaudios-frontend\\src\\pages"
+      "c:\\Users\\Jeckito Pay\\Documents\\AppPsicoaudios\\AppPsicoaudios-frontend\\src\\pages",
+      "C:\\Users\\Jeckito Pay\\Documents\\AppPsicoaudios\\AppPsicoaudios-frontend\\src\\pages"
     ]
   }
 }

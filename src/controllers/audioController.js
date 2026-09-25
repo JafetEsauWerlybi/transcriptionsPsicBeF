@@ -1,22 +1,25 @@
 const { v4: uuidv4 } = require('uuid');
-const fs = require('fs').promises;
-const { subirAudio } = require('../services/blobService');
+const { generarNombreBlob, generarUrlSubida, generarUrlLectura } = require('../services/blobService');
 const { transcribirAudio } = require('../services/assemblyService');
 const { crearTranscripcion, actualizarTranscripcion, obtenerTranscripcion } = require('../services/cosmosService');
 
-async function upload(req, res) {
-  if (!req.file) return res.status(400).json({ error: 'Archivo de audio requerido' });
+const MIME_PERMITIDOS = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/x-m4a', 'audio/webm', 'audio/ogg'];
 
+async function iniciarUpload(req, res) {
   try {
-    const id = uuidv4();
-    console.log(`[UPLOAD] Iniciando upload: ${id}, tamaño: ${req.file.size} bytes, usuario: ${req.usuarioId}`);
+    const { mimetype } = req.body;
+    if (!mimetype) return res.status(400).json({ error: 'mimetype requerido' });
+    if (!MIME_PERMITIDOS.includes(mimetype)) return res.status(400).json({ error: 'Formato de audio no soportado' });
 
-    // 1. Crear registro en Cosmos DB con estado "procesando"
+    const id = uuidv4();
+    const blobName = generarNombreBlob(mimetype);
+    console.log(`[UPLOAD-INIT] ${id}, blob: ${blobName}, usuario: ${req.usuarioId}`);
+
     await crearTranscripcion({
       id,
       usuarioId: req.usuarioId,
       tipo: 'archivo',
-      estado: 'procesando',
+      estado: 'subiendo',
       audioUrl: null,
       duracionSegundos: null,
       locutores: [],
@@ -26,53 +29,52 @@ async function upload(req, res) {
       creadoEn: new Date().toISOString(),
     });
 
-    console.log(`[UPLOAD] Registro creado en Cosmos: ${id}`);
+    res.json({ id, blobName, sasUrl: generarUrlSubida(blobName) });
+  } catch (err) {
+    console.error('[UPLOAD-INIT] ❌ Error:', err);
+    res.status(500).json({ error: 'Error al iniciar la subida' });
+  }
+}
+
+async function confirmarUpload(req, res) {
+  try {
+    const { id } = req.params;
+    const { blobName } = req.body;
+    if (!blobName) return res.status(400).json({ error: 'blobName requerido' });
+
+    const t = await obtenerTranscripcion(id, req.usuarioId);
+    if (!t) return res.status(404).json({ error: 'No encontrada' });
+
+    await actualizarTranscripcion(id, req.usuarioId, { estado: 'procesando' });
     res.json({ id, estado: 'procesando' });
 
-    // 2. En background: subir a Azure Blob y transcribir
+    // En background: leer de Azure Blob y transcribir
     setImmediate(async () => {
-      let fileBuffer = null;
       try {
-        console.log(`[UPLOAD] Leyendo archivo del disco: ${req.file.path}`);
-        fileBuffer = await fs.readFile(req.file.path);
-        console.log(`[UPLOAD] Archivo leído: ${fileBuffer.length} bytes`);
-
-        // Subir a Azure Blob
-        console.log(`[UPLOAD] Subiendo a Azure Blob...`);
-        const audioUrl = await subirAudio(fileBuffer, req.file.mimetype);
-        console.log(`[UPLOAD] Guardado en Azure: ${audioUrl}`);
+        const audioUrl = generarUrlLectura(blobName);
+        console.log(`[UPLOAD-COMMIT] Guardado en Azure: ${audioUrl}`);
         await actualizarTranscripcion(id, req.usuarioId, { audioUrl });
 
-        // Transcribir (secuencial, no paralelo, para evitar sobrecarga)
-        console.log(`[UPLOAD] Transcribiendo con AssemblyAI...`);
-        const resultado = await transcribirAudio(fileBuffer);
-        console.log(`[UPLOAD] Transcripción completada: ${resultado.textoCompleto.length} caracteres`);
+        console.log(`[UPLOAD-COMMIT] Transcribiendo con AssemblyAI...`);
+        const resultado = await transcribirAudio(audioUrl);
+        console.log(`[UPLOAD-COMMIT] Transcripción completada: ${resultado.textoCompleto.length} caracteres`);
         await actualizarTranscripcion(id, req.usuarioId, {
           estado: 'completado',
           textoCompleto: resultado.textoCompleto,
           locutores: resultado.locutores,
           duracionSegundos: resultado.duracionSegundos,
         });
-        console.log(`[UPLOAD] ✅ Proceso completado: ${id}`);
+        console.log(`[UPLOAD-COMMIT] ✅ Proceso completado: ${id}`);
       } catch (err) {
-        console.error(`[UPLOAD] ❌ Error en transcripción (${id}):`, err.message);
-        console.error(err);
+        console.error(`[UPLOAD-COMMIT] ❌ Error en transcripción (${id}):`, err.message);
         try {
           await actualizarTranscripcion(id, req.usuarioId, { estado: 'error' });
         } catch (e) {}
-      } finally {
-        fileBuffer = null;
-        try {
-          await fs.unlink(req.file.path);
-          console.log(`[UPLOAD] Archivo temporal eliminado`);
-        } catch (e) {}
       }
     });
-
   } catch (err) {
-    console.error(`[UPLOAD] ❌ Error inicial:`, err.message);
-    console.error(err);
-    res.status(500).json({ error: 'Error al procesar el audio' });
+    console.error('[UPLOAD-COMMIT] ❌ Error:', err);
+    res.status(500).json({ error: 'Error al confirmar la subida' });
   }
 }
 
@@ -105,4 +107,4 @@ async function descargarAudio(req, res) {
   }
 }
 
-module.exports = { upload, obtenerEstado, descargarAudio };
+module.exports = { iniciarUpload, confirmarUpload, obtenerEstado, descargarAudio };

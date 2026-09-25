@@ -2,16 +2,19 @@ const { getContainerClient } = require('../config/azure');
 const { StorageSharedKeyCredential, BlobSASPermissions, generateBlobSASQueryParameters } = require('@azure/storage-blob');
 const { v4: uuidv4 } = require('uuid');
 
-function generarSasUrl(blobName) {
+function datosCuenta() {
   const accountName = process.env.AZURE_STORAGE_CONNECTION_STRING.split('AccountName=')[1].split(';')[0];
   const accountKey = process.env.AZURE_STORAGE_CONNECTION_STRING.split('AccountKey=')[1].split(';')[0];
   const containerName = process.env.AZURE_STORAGE_CONTAINER;
-
   const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+  return { accountName, containerName, sharedKeyCredential };
+}
 
-  const permissions = new BlobSASPermissions({ read: true });
+function generarSasUrl(blobName, permissions, horasExpiracion) {
+  const { accountName, containerName, sharedKeyCredential } = datosCuenta();
+
   const expiryDate = new Date();
-  expiryDate.setHours(expiryDate.getHours() + 24);
+  expiryDate.setHours(expiryDate.getHours() + horasExpiracion);
 
   const sasQueryParams = generateBlobSASQueryParameters(
     {
@@ -26,20 +29,34 @@ function generarSasUrl(blobName) {
   return `https://${accountName}.blob.core.windows.net/${containerName}/${blobName}?${sasQueryParams}`;
 }
 
-async function subirAudio(buffer, mimetype) {
+function generarUrlLectura(blobName) {
+  return generarSasUrl(blobName, new BlobSASPermissions({ read: true }), 24);
+}
+
+function generarNombreBlob(mimetype) {
   const extension = mimetype.split('/')[1].replace('x-m4a', 'm4a').replace('mpeg', 'mp3');
-  const nombre = `${uuidv4()}.${extension}`;
+  return `${uuidv4()}.${extension}`;
+}
+
+function generarUrlSubida(blobName) {
+  const permisos = new BlobSASPermissions({ read: true, write: true, create: true, add: true });
+  return generarSasUrl(blobName, permisos, 2);
+}
+
+async function subirAudio(buffer, mimetype) {
+  const nombre = generarNombreBlob(mimetype);
   const blockBlobClient = getContainerClient().getBlockBlobClient(nombre);
   await blockBlobClient.uploadData(buffer, {
     blobHTTPHeaders: { blobContentType: mimetype },
   });
-  return generarSasUrl(nombre);
+  return generarUrlLectura(nombre);
 }
 
 async function eliminarAudio(url) {
+  if (!url) return;
   const blobName = url.split('/').pop().split('?')[0];
   const blockBlobClient = getContainerClient().getBlockBlobClient(blobName);
   await blockBlobClient.deleteIfExists();
 }
 
-module.exports = { subirAudio, eliminarAudio };
+module.exports = { subirAudio, eliminarAudio, generarNombreBlob, generarUrlSubida, generarUrlLectura };
