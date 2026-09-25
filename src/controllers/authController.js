@@ -30,7 +30,7 @@ async function register(req, res) {
     };
 
     await getCosmosContainer().items.create(usuario);
-    const token = jwt.sign({ id: usuario.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: usuario.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.status(201).json({ token, nombre: usuario.nombre });
   } catch (err) {
     console.error('Error register:', err);
@@ -56,7 +56,7 @@ async function login(req, res) {
     const valido = await bcrypt.compare(password, usuario.password);
     if (!valido) return res.status(401).json({ error: 'Credenciales inválidas' });
 
-    const token = jwt.sign({ id: usuario.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: usuario.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, nombre: usuario.nombre });
   } catch (err) {
     console.error('Error login:', err);
