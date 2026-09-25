@@ -30,7 +30,7 @@ function generarSasUrl(blobName, permissions, horasExpiracion) {
 }
 
 function generarUrlLectura(blobName) {
-  return generarSasUrl(blobName, new BlobSASPermissions({ read: true }), 24);
+  return generarSasUrl(blobName, BlobSASPermissions.from({ read: true }), 24);
 }
 
 function generarNombreBlob(mimetype) {
@@ -39,7 +39,7 @@ function generarNombreBlob(mimetype) {
 }
 
 function generarUrlSubida(blobName) {
-  const permisos = new BlobSASPermissions({ read: true, write: true, create: true, add: true });
+  const permisos = BlobSASPermissions.from({ read: true, write: true, create: true });
   return generarSasUrl(blobName, permisos, 2);
 }
 
